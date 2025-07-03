@@ -41,3 +41,9 @@ token.json
 # Log files
 *.log
 logs/
+
+# SSL certificate files
+*.pem
+
+# schwab API docs
+docs/

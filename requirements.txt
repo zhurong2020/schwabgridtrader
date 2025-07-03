@@ -1,0 +1,4 @@
+requests
+pyyaml
+requests_oauthlib
+# secrets、hashlib、base64为Python标准库，无需额外安装

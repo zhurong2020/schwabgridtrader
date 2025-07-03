@@ -23,6 +23,7 @@ An automated quantitative trading bot for implementing cyclical grid trading str
 
 ## 主要功能 (Key Features)
 
+- **OAuth 2.0 认证流程:** 实现与嘉信理财 API 的安全认证，包括获取授权码和交换访问令牌。
 - **对接嘉信理财API:** 安全、可靠地进行账户授权和交易执行。
 - **高度可配置:**
     - 交易标的 (Ticker Symbol)
@@ -55,35 +56,18 @@ An automated quantitative trading bot for implementing cyclical grid trading str
     pip install -r requirements.txt
     ```
 
-### 3. 配置 (Configuration)
+### 3. 配置 API 凭据和回调 URL (Configure API Credentials and Callback URL)
 
-1.  复制配置文件模板:
-    ```bash
-    cp config.example.yaml config.yaml
-    ```
+- 编辑 `config/config.yaml` 文件，填入你的 `api_key` 和 `api_secret`。
+- 在 Schwab 开发者门户和 `config/config.yaml` 中设置相同的回调 URL (`callback_url`)。**注意：** Schwab 生产环境通常要求 HTTPS 回调，本地开发时建议使用 ngrok 等工具将本地端口映射到公网 HTTPS 地址。
 
-2.  编辑 `config.yaml` 文件，填入你的个人信息和策略参数：
-    ```yaml
-    # Schwab API Credentials
-    api_key: "YOUR_APP_KEY"
-    api_secret: "YOUR_APP_SECRET"
-    # The callback url you set in your Schwab App settings
-    callback_url: "https://127.0.0.1" 
+### 4. 获取访问令牌 (Obtain Access Token)
 
-    # Trading Strategy Settings
-    # Repeat for each stock you want to trade
-    strategies:
-      - symbol: "AAPL"          # 交易标的
-        enabled: true           # 是否启用此策略
-        price_lower_bound: 150.0  # 价格区间下轨
-        price_upper_bound: 180.0  # 价格区间上轨
-        grid_quantity: 10         # 网格数量
-        order_amount: 500.0       # 每格买入的金额 (美元)
-        # Optional: cycle_days: 7  # 交易周期（天），可用于未来功能
-    ```
-    **注意:** `config.yaml` 包含敏感信息，切勿提交到你的Git仓库！`.gitignore` 文件已默认包含此规则。
+- 运行 `python src/auth_manager.py` 脚本。
+- 脚本会自动打开浏览器，引导你完成 Schwab 账户授权流程。
+- 授权成功后，脚本会自动获取访问令牌并保存到 `schwabs_token.json` 文件中。
 
-### 4. 运行 (Usage)
+### 5. 运行 (Usage)
 
 1.  **首次运行获取Token:**
     首次运行需要进行OAuth授权，程序会自动打开浏览器，请登录并授权，然后将跳转后的URL粘贴回控制台。
