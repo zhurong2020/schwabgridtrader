@@ -134,7 +134,7 @@ def get_new_token():
         schwab = OAuth2Session(
             client_id=api_key,
             redirect_uri=callback_url,
-            scope=['accounts', 'trading', 'marketdata', 'offline_access']
+            scope=['accounts', 'trading', 'marketdata']
         )
         authorization_url, state = schwab.authorization_url(
             auth_url,
@@ -170,12 +170,29 @@ def get_new_token():
         print("\n✅ 授权码获取成功! 正在换取访问令牌(Access Token)...")
 
         auth = HTTPBasicAuth(api_key, api_secret)
-        token = schwab.fetch_token(
-            token_url=token_url,
-            code=authorization_code,
-            auth=auth,
-            code_verifier=code_verifier
-        )
+        # 最小化scope，仅用一个scope做测试
+        token = None
+        try:
+            token = schwab.fetch_token(
+                token_url=token_url,
+                code=authorization_code,
+                auth=auth,
+                code_verifier=code_verifier,
+                scope=['accounts']  # 只用一个scope做最小化验证
+            )
+        except Exception as e:
+            print("\n❌ fetch_token发生错误: ", str(e))
+            # 尽可能打印所有能拿到的原始响应内容
+            response = getattr(e, 'response', None)
+            if response is not None:
+                print('Token endpoint raw response:', response.text)
+            elif hasattr(e, 'description'):
+                print('OAuthlib error description:', getattr(e, 'description'))
+            else:
+                print('Exception object:', repr(e))
+            import traceback
+            print(traceback.format_exc())
+            raise
 
         with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
             json.dump(token, f, indent=4)

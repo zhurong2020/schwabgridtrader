@@ -44,6 +44,3 @@ logs/
 
 # SSL certificate files
 *.pem
-
-# schwab API docs
-docs/
