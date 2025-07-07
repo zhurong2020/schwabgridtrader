@@ -1,4 +1,5 @@
 requests
 pyyaml
 requests_oauthlib
+pyOpenSSL
 # secrets、hashlib、base64为Python标准库，无需额外安装

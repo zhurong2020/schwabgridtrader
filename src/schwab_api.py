@@ -90,9 +90,23 @@ if __name__ == '__main__':
             print(f"\n⏳ 正在获取账户 {first_account_hash} 的详细信息(含持仓)...")
             account_details = api.get_account_info(first_account_hash)
             
-            print("\n--- 账户详情 ---")
-            # 使用json.dumps美化打印输出
-            print(json.dumps(account_details, indent=2))
+            print("\n--- 账户概览 ---")
+            account_data = account_details['securitiesAccount']
+            print(f"账户类型: {account_data['type']}")
+            print(f"账户号: {account_data['accountNumber']}")
+            print(f"总资产净值: {account_data['initialBalances']['accountValue']}")
+            print(f"可用资金: {account_data['currentBalances']['availableFunds']}")
+
+            print("\n--- 持仓概览 ---")
+            if account_data['positions']:
+                for position in account_data['positions']:
+                    symbol = position['instrument']['symbol']
+                    quantity = position['longQuantity'] if position['longQuantity'] > 0 else position['shortQuantity']
+                    market_value = position['marketValue']
+                    description = position['instrument'].get('description', '')
+                    print(f"  - {symbol} ({description}): {quantity} 股, 市值: {market_value:.2f}")
+            else:
+                print("  无持仓。")
             print("✅ 测试完成！")
             
     except Exception as e:

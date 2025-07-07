@@ -37,6 +37,7 @@ env/
 config.yaml
 *.token
 token.json
+schwabs_token.json
 
 # Log files
 *.log

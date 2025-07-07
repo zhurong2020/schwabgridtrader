@@ -2,17 +2,23 @@ import yaml
 import webbrowser
 import json
 import threading
+import ssl
+import os
 from requests_oauthlib import OAuth2Session
 from requests.auth import HTTPBasicAuth
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
+
 import secrets
 import hashlib
 import base64
+from OpenSSL import crypto # Moved to top-level for IDE compatibility and clearer dependency
 
 # --- 常量配置 ---
 TOKEN_FILE = 'schwabs_token.json'
 CONFIG_FILE = 'config.yaml'
+CERT_FILE = 'cert.pem'
+KEY_FILE = 'key.pem'
 
 # 全局变量用于在线程间传递授权码
 authorization_code = None
@@ -25,7 +31,10 @@ def load_config():
         # 如果你的config.yaml在根目录，就用 'config.yaml'
         # 修改后
         with open('config/config.yaml', 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f)
+            # 默认不使用ngrok
+            config['use_ngrok'] = config.get('use_ngrok', False)
+            return config
     except FileNotFoundError:
         print(f"错误: 配置文件 'config/config.yaml' 未找到。请检查路径。")
         exit(1)
@@ -73,24 +82,81 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         # Or, for more detail, use the following, but be cautious about printing sensitive information:
         # print(f"[HTTP] {self.requestline} - Headers: {dict(self.headers)}")
 
+def generate_self_signed_cert(cert_file, key_file):
+    """生成自签名SSL证书和私钥"""
+    if os.path.exists(cert_file) and os.path.exists(key_file):
+        print(f"证书文件 '{cert_file}' 和 '{key_file}' 已存在，跳过生成。")
+        return
+
+    print(f"正在生成自签名SSL证书 '{cert_file}' 和私钥 '{key_file}'...")
+    try:
+        from OpenSSL import crypto
+
+        # 创建一个自签名证书
+        k = crypto.PKey()
+        k.generate_key(crypto.TYPE_RSA, 2048)
+
+        cert = crypto.X509()
+        cert.get_subject().C = "US"
+        cert.get_subject().ST = "State"
+        cert.get_subject().L = "City"
+        cert.get_subject().O = "SchwabGridTrader"
+        cert.get_subject().OU = "Development"
+        cert.get_subject().CN = "localhost" # Common Name must be localhost for 127.0.0.1
+        cert.set_serial_number(1000)
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(365 * 24 * 60 * 60) # Valid for 1 year
+        cert.set_issuer(cert.get_subject())
+        cert.set_pubkey(k)
+        cert.sign(k, 'sha256')
+
+        with open(cert_file, "wt") as f:
+            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
+        with open(key_file, "wt") as f:
+            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8"))
+        print("证书生成成功。")
+    except ImportError:
+        print("错误: 未安装 'pyOpenSSL' 库。请运行 'pip install pyOpenSSL' 来生成自签名证书。")
+        print("或者手动生成证书并将其命名为 'cert.pem' 和 'key.pem' 放在项目根目录。")
+        exit(1)
+    except Exception as e:
+        print(f"生成证书时发生错误: {e}")
+        exit(1)
+
 def run_callback_server(host, port, timeout):
-    """运行一个临时的本地HTTP服务器来监听回调（不再使用SSL）"""
+    """运行一个临时的本地HTTPS服务器来监听回调"""
     import time
     import traceback
     global authorization_code, auth_error
     try:
         server_address = (host, port)
-        with HTTPServer(server_address, OAuthCallbackHandler) as httpd:
-            print(f"[run_callback_server] 已启动本地HTTP监听: http://{host}:{port}")
-            start_time = time.time()
-            while authorization_code is None and auth_error is None:
-                httpd.timeout = 1  # Check every second
-                httpd.handle_request()
-                if time.time() - start_time > timeout:
-                    # This message is a fallback, the main timeout is in get_new_token
-                    break
+        httpd = HTTPServer(server_address, OAuthCallbackHandler)
+        
+        # 配置SSL/TLS
+        try:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
+            httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+            print(f"[run_callback_server] 已启动本地HTTPS监听: https://{host}:{port}")
+        except FileNotFoundError:
+            print(f"错误: 证书文件 '{CERT_FILE}' 或 '{KEY_FILE}' 未找到。请确保它们在项目根目录。")
+            print("尝试运行脚本以自动生成证书，或手动生成。")
+            auth_error = "SSL证书文件缺失"
+            return
+        except ssl.SSLError as e:
+            print(f"SSL配置错误: {e}")
+            print("请检查证书文件是否有效。")
+            auth_error = "SSL配置错误"
+            return
+
+        start_time = time.time()
+        while authorization_code is None and auth_error is None:
+            httpd.timeout = 1  # Check every second
+            httpd.handle_request()
+            if time.time() - start_time > timeout:
+                break
     except Exception as e:
-        print(f"本地HTTP服务器启动失败: {e}")
+        print(f"本地HTTPS服务器启动失败: {e}")
         auth_error = str(e)
         print(traceback.format_exc())
 
@@ -107,6 +173,7 @@ def get_new_token():
     api_key = config['api_key']
     api_secret = config['api_secret']
     callback_url = config['callback_url']
+    use_ngrok = config['use_ngrok']
     
     # Load new settings from config, with defaults
     callback_host = config.get('local_server_host', '127.0.0.1')
@@ -115,16 +182,19 @@ def get_new_token():
 
     print(f"\n[get_new_token] Loaded configuration: {config}")  # Print full config
 
-    if 'localhost' in callback_url or '127.0.0.1' in callback_url:
-        print("="*80)
-        print("⚠️ 警告: 回调URL看起来是一个本地地址(localhost)。")
-        print("Schwab API需要一个公开的HTTPS地址进行回调，例如由ngrok提供。")
-        print("="*80)
-
-    print(f"使用的回调URL: {callback_url}")
-    print(f"本地监听地址: http://{callback_host}:{callback_port}")
-    print(f"授权超时设置为: {auth_timeout} 秒")
-    print(f"\n请确保:\n 1. ngrok已启动并指向本地端口 (命令: ngrok http {callback_port})\n 2. Schwab开发者门户中的'Callback URL'已精确设置为ngrok提供的HTTPS地址。\n 3. config.yaml中的'callback_url'也已设置为该ngrok地址。")
+    if not use_ngrok:
+        # 确保证书存在
+        generate_self_signed_cert(CERT_FILE, KEY_FILE)
+        print(f"使用的回调URL: {callback_url}")
+        print(f"本地监听地址: https://{callback_host}:{callback_port}")
+        print(f"授权超时设置为: {auth_timeout} 秒")
+        print(f"\n请确保:\n 1. Schwab开发者门户中的'Callback URL'已精确设置为: {callback_url}\n 2. config.yaml中的'callback_url'也已设置为该地址。")
+        print("由于使用自签名证书，浏览器可能会提示不安全，请选择继续访问。")
+    else:
+        print(f"使用的回调URL: {callback_url}")
+        print(f"本地监听地址: http://{callback_host}:{callback_port}")
+        print(f"授权超时设置为: {auth_timeout} 秒")
+        print(f"\n请确保:\n 1. ngrok已启动并指向本地端口 (命令: ngrok http {callback_port})\n 2. Schwab开发者门户中的'Callback URL'已精确设置为ngrok提供的HTTPS地址。\n 3. config.yaml中的'callback_url'也已设置为该ngrok地址。")
 
     auth_url = 'https://api.schwabapi.com/v1/oauth/authorize'
     token_url = 'https://api.schwabapi.com/v1/oauth/token'
@@ -134,7 +204,7 @@ def get_new_token():
         schwab = OAuth2Session(
             client_id=api_key,
             redirect_uri=callback_url,
-            scope=['accounts', 'trading', 'marketdata']
+            scope=['api']
         )
         authorization_url, state = schwab.authorization_url(
             auth_url,
@@ -178,7 +248,7 @@ def get_new_token():
                 code=authorization_code,
                 auth=auth,
                 code_verifier=code_verifier,
-                scope=['accounts']  # 只用一个scope做最小化验证
+                scope=['api']
             )
         except Exception as e:
             print("\n❌ fetch_token发生错误: ", str(e))
@@ -204,6 +274,7 @@ def get_new_token():
         import traceback
         print(traceback.format_exc())
         return None
+
     
 if __name__ == '__main__':
     get_new_token()
