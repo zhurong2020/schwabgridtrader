@@ -3,9 +3,9 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-green.svg)
 
-An automated quantitative trading bot for implementing cyclical grid trading strategies on the Charles Schwab platform via its official API.
+An automated quantitative trading bot for implementing cyclical grid trading strategies on the Charles Schwab platform via its official API, with robust OAuth 2.0 authentication and token management.
 
-一个基于嘉信理财 (Charles Schwab) 官方API的自动化量化交易机器人，用于实现周期性网格交易策略。
+一个基于嘉信理财 (Charles Schwab) 官方API的自动化量化交易机器人，用于实现周期性网格交易策略，并具备强大的OAuth 2.0认证和令牌管理功能。
 
 ## 核心策略：周期网格 (Core Strategy: Cyclical Grid)
 
@@ -23,8 +23,12 @@ An automated quantitative trading bot for implementing cyclical grid trading str
 
 ## 主要功能 (Key Features)
 
-- **OAuth 2.0 认证流程:** 实现与嘉信理财 API 的安全认证，包括获取授权码和交换访问令牌。
-- **对接嘉信理财API:** 安全、可靠地进行账户授权和交易执行。
+- **OAuth 2.0 认证与令牌管理:**
+    - 实现与嘉信理财 API 的安全 OAuth 2.0 授权码流程，支持 PKCE。
+    - 支持在本地开发环境（如 WSL）中启动 **本地 HTTPS 回调服务器**，简化调试。
+    - 自动获取、存储和刷新 Access Token 和 Refresh Token，确保会话持久性。
+    - 敏感令牌文件 `schwabs_token.json` 已自动添加到 `.gitignore`。
+- **对接嘉信理财API:** 安全、可靠地进行账户授权和基本账户信息（如持仓）的获取。
 - **高度可配置:**
     - 交易标的 (Ticker Symbol)
     - 价格上轨/下轨 (Price Range Upper/Lower Bound)
@@ -33,7 +37,7 @@ An automated quantitative trading bot for implementing cyclical grid trading str
     - 交易周期 (Trading Cycle)
 - **自动化执行:** 启动后7x24小时监控行情（根据市场交易时间），自动下单，无需人工干预。
 - **状态持久化:** 记录当前的持仓和网格状态，即使程序重启也能恢复。
-- **详细日志:** 记录每一笔交易决策、API请求和执行结果，方便复盘和排错。
+- **详细日志:** 记录每一笔交易决策、API请求和执行结果，方便复盘和排错.
 
 ## 开始使用 (Getting Started)
 
@@ -59,28 +63,20 @@ An automated quantitative trading bot for implementing cyclical grid trading str
 ### 3. 配置 API 凭据和回调 URL (Configure API Credentials and Callback URL)
 
 - 编辑 `config/config.yaml` 文件，填入你的 `api_key` 和 `api_secret`。
-- 在 Schwab 开发者门户和 `config/config.yaml` 中设置相同的回调 URL (`callback_url`)。**注意：** Schwab 生产环境通常要求 HTTPS 回调，本地开发时建议使用 ngrok 等工具将本地端口映射到公网 HTTPS 地址。
+- 在 Schwab 开发者门户和 `config/config.yaml` 中设置相同的回调 URL (`callback_url`)。**注意：** 对于本地开发，强烈建议使用 `https://127.0.0.1:PORT` 作为回调 URL，并确保 `use_ngrok: false`。
 
 ### 4. 获取访问令牌 (Obtain Access Token)
 
 - 运行 `python src/auth_manager.py` 脚本。
 - 脚本会自动打开浏览器，引导你完成 Schwab 账户授权流程。
-- 授权成功后，脚本会自动获取访问令牌并保存到 `schwabs_token.json` 文件中。
+- 授权成功后，脚本会自动获取访问令牌并保存到 `schwabs_token.json` 文件中。此文件已自动添加到 `.gitignore`。
 
 ### 5. 运行 (Usage)
 
-1.  **首次运行获取Token:**
-    首次运行需要进行OAuth授权，程序会自动打开浏览器，请登录并授权，然后将跳转后的URL粘贴回控制台。
-    ```bash
-    python main.py
-    ```
-    程序会自动保存 `token` 文件供后续使用。
-
-2.  **开始交易:**
-    之后再次运行，程序将自动加载 `token` 并开始监控和交易。
-    ```bash
-    python main.py
-    ```
+- **测试 Schwab API 客户端:**
+    - 运行 `python src/schwab_api.py` 脚本。
+    - 脚本将加载已保存的令牌，并尝试获取你的 Schwab 账户信息（包括持仓），并在控制台打印简洁的概览。
+    - 此脚本也负责自动刷新和保存令牌。
 
 ## ⚠️ 免责声明 (Disclaimer)
 
