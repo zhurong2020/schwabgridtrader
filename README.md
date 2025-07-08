@@ -3,23 +3,9 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-green.svg)
 
-An automated quantitative trading bot for implementing cyclical grid trading strategies on the Charles Schwab platform via its official API, with robust OAuth 2.0 authentication and token management.
+An API integration module for Charles Schwab platform, providing robust OAuth 2.0 authentication, token management, and basic API client functionalities. This module is designed to be integrated into larger trading applications, such as a grid trading tool, to enable secure and reliable interaction with Schwab's APIs.
 
-一个基于嘉信理财 (Charles Schwab) 官方API的自动化量化交易机器人，用于实现周期性网格交易策略，并具备强大的OAuth 2.0认证和令牌管理功能。
-
-## 核心策略：周期网格 (Core Strategy: Cyclical Grid)
-
-本项目的核心是**周期网格策略**。与传统网格策略不同，它结合了时间周期和价格区间：
-
-1.  **定义周期 (Define Cycle):** 设定一个固定的交易周期，例如一周、一个月。
-2.  **确定标的与区间 (Set Target & Range):** 选择一个你认为的优质标的（如某支股票或ETF），并为其估算一个在此周期内大概率会波动的价格区间（例如 $10.00 - $12.00）。
-3.  **构建网格 (Build Grid):** 在价格区间内，自动生成一系列的买入和卖出点位。
-4.  **自动交易 (Automated Trading):**
-    *   当价格下跌触及某个买入网格线时，自动执行买入。
-    *   当价格上涨触及一个已持仓成本之上的卖出网格线时，自动执行卖出，完成一轮套利。
-5.  **周期重复 (Repeat):** 在一个周期结束后，可以根据市场情况重新评估和设定下一个周期的交易区间，不断重复获利。
-
-这种策略旨在从标的物的区间震荡中持续获利，而不是赌单边上涨。
+一个用于嘉信理财 (Charles Schwab) 平台的API集成模块，提供强大的OAuth 2.0认证、令牌管理和基本的API客户端功能。该模块旨在集成到更大的交易应用程序（例如网格交易工具）中，以实现与Schwab API的安全可靠交互。
 
 ## 主要功能 (Key Features)
 
@@ -28,16 +14,10 @@ An automated quantitative trading bot for implementing cyclical grid trading str
     - 支持在本地开发环境（如 WSL）中启动 **本地 HTTPS 回调服务器**，简化调试。
     - 自动获取、存储和刷新 Access Token 和 Refresh Token，确保会话持久性。
     - 敏感令牌文件 `schwabs_token.json` 已自动添加到 `.gitignore`。
-- **对接嘉信理财API:** 安全、可靠地进行账户授权和基本账户信息（如持仓）的获取。
-- **高度可配置:**
-    - 交易标的 (Ticker Symbol)
-    - 价格上轨/下轨 (Price Range Upper/Lower Bound)
-    - 网格数量 (Number of Grids)
-    - 单网格交易金额/数量 (Amount/Quantity per Grid)
-    - 交易周期 (Trading Cycle)
-- **自动化执行:** 启动后7x24小时监控行情（根据市场交易时间），自动下单，无需人工干预。
-- **状态持久化:** 记录当前的持仓和网格状态，即使程序重启也能恢复。
-- **详细日志:** 记录每一笔交易决策、API请求和执行结果，方便复盘和排错.
+- **Schwab API 客户端:**
+    - 提供与嘉信理财 API 的安全、可靠连接。
+    - 能够获取账户授权和基本账户信息（如持仓）。
+    - 模块化设计，易于集成到其他 Python 项目中。
 
 ## 开始使用 (Getting Started)
 
@@ -90,11 +70,10 @@ An automated quantitative trading bot for implementing cyclical grid trading str
 
 ## 路线图 (Roadmap)
 
-- [ ] 实现更灵活的非对称网格策略
-- [ ] 增加基于布林带或RSI指标动态调整价格区间的功能
-- [ ] 开发简单的Web界面用于监控和管理
-- [ ] 集成回测功能
-- [ ] 支持更多交易品种（如期权）
+- [ ] 扩展 Schwab API 客户端功能，支持更多 Trader API 端点（如订单管理、行情数据）。
+- [ ] 增加对 Schwab Market Data API 的支持。
+- [ ] 优化错误处理和日志记录。
+- [ ] 编写更全面的单元测试。
 
 ## 贡献 (Contributing)
 
