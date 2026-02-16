@@ -7,7 +7,7 @@ Charles Schwab API 集成模块，提供 OAuth 2.0 认证、令牌管理和基�
 - **语言**: Python 3.8+
 - **认证**: OAuth 2.0 Authorization Code Flow (PKCE)
 - **API**: Schwab Trader API, Market Data API
-- **状态**: 早期开发
+- **状态**: 已归档 (代码迁入 quant-engine `brokers/schwab/`)
 
 ## 项目结构
 

@@ -1,7 +1,12 @@
 # SchwabGridTrader
 
+> **Archived**: This project's code has been migrated to [quant-engine](https://github.com/zhurong2020/quant-engine) (`brokers/schwab/`). This repository is kept as a public reference/tutorial for Schwab OAuth2 integration.
+>
+> **已归档**: 本项目代码已迁入 [quant-engine](https://github.com/zhurong2020/quant-engine) (`brokers/schwab/`)。此仓库保留为 Schwab OAuth2 集成的公开参考/教程。
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-green.svg)
+![Status](https://img.shields.io/badge/status-archived-yellow.svg)
 
 An API integration module for Charles Schwab platform, providing robust OAuth 2.0 authentication, token management, and basic API client functionalities. This module is designed to be integrated into larger trading applications, such as a grid trading tool, to enable secure and reliable interaction with Schwab's APIs.
 
