@@ -48,3 +48,4 @@ python src/schwab_api.py
 | 关联项目 | 所在 Workspace | 关系 |
 |----------|---------------|------|
 | moomoo_custom_strategies | finance-trading | 同 workspace 内另一个交易平台项目，独立运作 |
+| quant-engine | finance-trading | 认证和 API 代码已迁入 `brokers/schwab/` (Phase 3 完成) |
